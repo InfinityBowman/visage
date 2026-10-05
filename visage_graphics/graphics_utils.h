@@ -130,6 +130,13 @@ namespace visage {
       lookup_.erase(id);
     }
 
+    static int nextPowerOfTwo(int value) {
+      int result = 1;
+      while (result < value)
+        result *= 2;
+      return result;
+    }
+
     void pack(int start_width = kDefaultWidth, int start_height = kDefaultWidth) {
       static constexpr int kMaxDimension = 1 << 14;
 
@@ -141,17 +148,29 @@ namespace visage {
           VISAGE_ASSERT(false);
       }
       else if (!packed_rects_.empty()) {
-        width_ = std::max(kDefaultWidth, start_width);
-        height_ = std::max(kDefaultWidth, start_height);
+        // From the least that holds the widest and the tallest, a side at a time, the shorter
+        // first: doubling both at once can leave an atlas four times what it holds.
+        int widest = 0;
+        int tallest = 0;
+        for (const PackedRect& rect : packed_rects_) {
+          widest = std::max(widest, rect.w + packer_.padding());
+          tallest = std::max(tallest, rect.h + packer_.padding());
+        }
+        width_ = std::max({ kDefaultWidth, start_width, nextPowerOfTwo(widest) });
+        height_ = std::max({ kDefaultWidth, start_height, nextPowerOfTwo(tallest) });
 
-        while (width_ < kMaxDimension * 2 || height_ < kMaxDimension * 2) {
+        while (width_ <= kMaxDimension || height_ <= kMaxDimension) {
           width_ = fixed_width_ ? fixed_width_ : std::min(kMaxDimension, width_);
           height_ = std::min(kMaxDimension, height_);
           if (packer_.pack(packed_rects_, width_, height_))
             return;
+          if (height_ == kMaxDimension && (fixed_width_ || width_ == kMaxDimension))
+            break;
 
-          width_ *= 2;
-          height_ *= 2;
+          if (fixed_width_ || (height_ <= width_ && height_ < kMaxDimension) || width_ == kMaxDimension)
+            height_ *= 2;
+          else
+            width_ *= 2;
         }
         VISAGE_ASSERT(false);
       }

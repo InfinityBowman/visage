@@ -235,13 +235,28 @@ namespace visage {
 
     PackedImage addImage(const Image& image, bool force_update = false);
     PackedImage addData(const unsigned char* data, int width, int height = 1);
+    // Lets go of what is no longer drawn, and of the room it took once what is left would fit
+    // in a quarter of it: an atlas grown for a moment's many images does not keep their room.
     void clearStaleImages() {
+      if (stale_images_.empty())
+        return;
+
       for (const auto& stale : stale_images_) {
         images_.erase(stale.first);
         atlas_map_.removeRect(stale.second);
         references_.erase(stale.first);
       }
       stale_images_.clear();
+
+      static constexpr long long kSmallestToShrink = 1024 * 1024;
+      const long long area = static_cast<long long>(atlas_map_.width()) * atlas_map_.height();
+      if (area <= kSmallestToShrink)
+        return;
+      long long used = 0;
+      for (const auto& image : images_)
+        used += static_cast<long long>(image.second->w + kImageBuffer) * (image.second->h + kImageBuffer);
+      if (used * 4 < area)
+        resize();
     }
 
     int width() const { return atlas_map_.width(); }
