@@ -27,7 +27,11 @@
 #include "visage_utils/space.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <numeric>
+#include <unordered_map>
+#include <vector>
 
 namespace visage {
   class Shader;
@@ -222,9 +226,35 @@ namespace visage {
       int y = shape.y;
       int right = shape.x + shape.width;
       int bottom = shape.y + shape.height;
-      return std::any_of(areas_.begin(), areas_.end(), [x, y, right, bottom](auto& area) {
+      auto overlaps = [x, y, right, bottom](const Area& area) {
         return x < area.right && right > area.x && y < area.bottom && bottom > area.y;
-      });
+      };
+      if (areas_.empty() || !overlaps(bounds_))
+        return false;
+      if (areas_.size() <= kIndexedAfter)
+        return std::any_of(areas_.begin(), areas_.end(), overlaps);
+
+      // Only the areas filed in the cells the shape covers, and the few too large to file.
+      for (uint32_t index : large_) {
+        if (overlaps(areas_[index]))
+          return true;
+      }
+      int left_cell = cellOf(x), top_cell = cellOf(y);
+      int right_cell = cellOf(right), bottom_cell = cellOf(bottom);
+      if ((right_cell - left_cell + 1) * (bottom_cell - top_cell + 1) > kMaxCells)
+        return std::any_of(areas_.begin(), areas_.end(), overlaps);
+      for (int cy = top_cell; cy <= bottom_cell; ++cy) {
+        for (int cx = left_cell; cx <= right_cell; ++cx) {
+          auto cell = cells_.find(cellKey(cx, cy));
+          if (cell == cells_.end())
+            continue;
+          for (uint32_t index : cell->second) {
+            if (overlaps(areas_[index]))
+              return true;
+          }
+        }
+      }
+      return false;
     }
 
     const void* id() const { return id_; }
@@ -256,12 +286,35 @@ namespace visage {
       return 0;
     }
 
-    void clearAreas() { areas_.clear(); }
+    void clearAreas() {
+      areas_.clear();
+      large_.clear();
+      // The cells are kept, emptied, for the next frame's shapes to fall in the same ones.
+      for (auto& cell : cells_)
+        cell.second.clear();
+    }
+
     void addShapeArea(const BaseShape& shape) {
       VISAGE_ASSERT(id_ == nullptr || id_ == shape.batch_id);
       id_ = shape.batch_id;
       radial_gradient_ = shape.radialGradient();
-      areas_.push_back({ shape.x, shape.y, shape.x + shape.width, shape.y + shape.height });
+      Area area = { shape.x, shape.y, shape.x + shape.width, shape.y + shape.height };
+      if (areas_.empty())
+        bounds_ = area;
+      else {
+        bounds_.x = std::min(bounds_.x, area.x);
+        bounds_.y = std::min(bounds_.y, area.y);
+        bounds_.right = std::max(bounds_.right, area.right);
+        bounds_.bottom = std::max(bounds_.bottom, area.bottom);
+      }
+      areas_.push_back(area);
+
+      if (areas_.size() == kIndexedAfter + 1) {
+        for (uint32_t i = 0; i < areas_.size(); ++i)
+          fileArea(i);
+      }
+      else if (areas_.size() > kIndexedAfter + 1)
+        fileArea(areas_.size() - 1);
     }
 
   private:
@@ -269,8 +322,38 @@ namespace visage {
       float x, y, right, bottom;
     };
 
+    // A batch of more areas than this files them by where they are, so whether a shape overlaps
+    // any is a look in its cells rather than at every area: a batch of thousands of small shapes
+    // is otherwise quadratic to build.
+    static constexpr size_t kIndexedAfter = 32;
+    static constexpr int kCellShift = 6;
+    // An area over more cells than this is checked always rather than filed.
+    static constexpr int kMaxCells = 64;
+
+    static int cellOf(float position) { return static_cast<int>(std::floor(position)) >> kCellShift; }
+    static uint64_t cellKey(int cx, int cy) {
+      return (static_cast<uint64_t>(static_cast<uint32_t>(cy)) << 32) | static_cast<uint32_t>(cx);
+    }
+
+    void fileArea(uint32_t index) {
+      const Area& area = areas_[index];
+      int left_cell = cellOf(area.x), top_cell = cellOf(area.y);
+      int right_cell = cellOf(area.right), bottom_cell = cellOf(area.bottom);
+      if ((right_cell - left_cell + 1) * (bottom_cell - top_cell + 1) > kMaxCells) {
+        large_.push_back(index);
+        return;
+      }
+      for (int cy = top_cell; cy <= bottom_cell; ++cy) {
+        for (int cx = left_cell; cx <= right_cell; ++cx)
+          cells_[cellKey(cx, cy)].push_back(index);
+      }
+    }
+
     const void* id_ = nullptr;
     std::vector<Area> areas_;
+    Area bounds_ {};
+    std::vector<uint32_t> large_;
+    std::unordered_map<uint64_t, std::vector<uint32_t>> cells_;
     BlendMode blend_mode_;
     bool radial_gradient_ = false;
   };

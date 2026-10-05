@@ -674,3 +674,38 @@ TEST_CASE("Canvas fills a clamped path as the whole path wherever it shows", "[g
     REQUIRE(cut.sample(20, 40).hexRed() == 0x00);
   }
 }
+
+TEST_CASE("Canvas keeps the order of overlapping shapes among many in one batch", "[graphics]") {
+  // Hundreds of small circles batch together; a rectangle of another kind over one of them, and
+  // a circle over that, must come out in the order drawn, whichever batch each joins.
+  Canvas canvas;
+  canvas.setWindowless(400, 400);
+  canvas.setColor(0xff000000);
+  canvas.fill(0, 0, canvas.width(), canvas.height());
+
+  canvas.setColor(0xffff0000);
+  for (int y = 0; y < 20; ++y) {
+    for (int x = 0; x < 20; ++x)
+      canvas.circle(x * 20 + 2, y * 20 + 2, 16);
+  }
+  canvas.setColor(0xff0000ff);
+  canvas.rectangle(200, 200, 20, 20);
+  canvas.setColor(0xff00ff00);
+  canvas.circle(202, 202, 16);
+  canvas.setColor(0xff0000ff);
+  canvas.rectangle(380, 380, 20, 20);
+
+  canvas.submit();
+  const Screenshot& screenshot = canvas.takeScreenshot();
+
+  const Color on_top = screenshot.sample(210, 210);
+  REQUIRE(on_top.hexGreen() == 0xff);
+  REQUIRE(on_top.hexBlue() == 0x00);
+  const Color under = screenshot.sample(201, 201);
+  REQUIRE(under.hexBlue() == 0xff);
+  const Color last = screenshot.sample(390, 390);
+  REQUIRE(last.hexBlue() == 0xff);
+  REQUIRE(last.hexRed() == 0x00);
+  const Color circle = screenshot.sample(30, 30);
+  REQUIRE(circle.hexRed() == 0xff);
+}
