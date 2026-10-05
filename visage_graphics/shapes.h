@@ -561,6 +561,7 @@ namespace visage {
     VISAGE_CREATE_BATCH_ID
     static constexpr int kLineVerticesPerPoint = 6;
     static constexpr float kBuffer = 1.0f;
+    static constexpr float kClipMargin = kBuffer + 2.0f;
     static const EmbeddedFile& vertexShader();
     static const EmbeddedFile& fragmentShader();
 
@@ -569,6 +570,17 @@ namespace visage {
         Shape(batchId(), clamp, brush, x, y, width, height), path_atlas(atlas), scale(scale) {
       Path adjusted_path = scale == 1.0f ? path : path.scaled(scale);
       Bounds bounding_box = adjusted_path.boundingBox();
+      // Rasterized only where it can show, and a little past for its edge: a path larger than
+      // what it is clamped to, as one that crosses many regions is in each, takes room in the
+      // atlas for that part of it alone.
+      Bounds visible(clamp.left - x - kClipMargin, clamp.top - y - kClipMargin,
+                     clamp.right - clamp.left + 2.0f * kClipMargin,
+                     clamp.bottom - clamp.top + 2.0f * kClipMargin);
+      if (bounding_box.x() < visible.x() || bounding_box.y() < visible.y() ||
+          bounding_box.right() > visible.right() || bounding_box.bottom() > visible.bottom()) {
+        adjusted_path = adjusted_path.clipped(visible);
+        bounding_box = adjusted_path.boundingBox();
+      }
       float new_x = static_cast<int>(x + bounding_box.x() - kBuffer);
       float new_y = static_cast<int>(y + bounding_box.y() - kBuffer);
       float new_width = std::ceil(x + bounding_box.right() + kBuffer) - new_x;

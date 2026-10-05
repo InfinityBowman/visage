@@ -465,6 +465,11 @@ namespace visage {
       }
     }
 
+    // The path cut to `bounds` for filling: each sub-path, closed as a fill closes it, clipped
+    // to the rectangle, so every point inside the rectangle is covered exactly as by the whole
+    // path under either fill rule. Outside it nothing is.
+    Path clipped(const Bounds& bounds) const;
+
     Path reversed() const {
       Path reversed_path = *this;
       reversed_path.reverse();

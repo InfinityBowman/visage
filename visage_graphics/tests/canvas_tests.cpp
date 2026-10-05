@@ -22,8 +22,10 @@
 #include "visage_graphics/canvas.h"
 #include "visage_graphics/color.h"
 #include "visage_graphics/gradient.h"
+#include "visage_graphics/path.h"
 
 #include <catch2/catch_approx.hpp>
+#include <cmath>
 #include <catch2/catch_test_macros.hpp>
 
 using namespace visage;
@@ -587,5 +589,46 @@ TEST_CASE("Canvas erase and lay replace what a shape covers", "[graphics]") {
     const Color outside = replaced.sample(10, 10);
     REQUIRE(outside.hexRed() == 0xff);
     REQUIRE(outside.hexAlpha() == 0xff);
+  }
+}
+
+TEST_CASE("Canvas fills a clamped path as the whole path wherever it shows", "[graphics]") {
+  // A five-pointed star, which crosses itself: its middle is wound twice, so the two fill rules
+  // differ there.
+  Path star;
+  for (int i = 0; i < 5; ++i) {
+    const float angle = -1.5707963f + i * 2.0f * 2.5132741f;
+    const Point point(60.0f + 50.0f * std::cos(angle), 60.0f + 50.0f * std::sin(angle));
+    if (i == 0)
+      star.moveTo(point.x, point.y);
+    else
+      star.lineTo(point.x, point.y);
+  }
+  star.close();
+
+  for (const auto rule : { Path::FillRule::NonZero, Path::FillRule::EvenOdd }) {
+    star.setFillRule(rule);
+    auto draw = [&](bool clamped) {
+      Canvas canvas;
+      canvas.setWindowless(120, 120);
+      canvas.setColor(0xff000000);
+      canvas.fill(0, 0, canvas.width(), canvas.height());
+      if (clamped)
+        canvas.setClampBounds(45, 30, 40, 50);
+      canvas.setColor(0xffffffff);
+      canvas.fill(star);
+      canvas.submit();
+      return canvas.takeScreenshot();
+    };
+
+    const Screenshot whole = draw(false);
+    const Screenshot cut = draw(true);
+    for (int y = 30; y < 80; ++y) {
+      for (int x = 45; x < 85; ++x) {
+        INFO("at " << x << ", " << y);
+        REQUIRE(cut.sample(x, y).hexRed() == whole.sample(x, y).hexRed());
+      }
+    }
+    REQUIRE(cut.sample(20, 40).hexRed() == 0x00);
   }
 }

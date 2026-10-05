@@ -374,6 +374,59 @@ namespace visage {
     }
   }
 
+  Path Path::clipped(const Bounds& bounds) const {
+    // Sutherland-Hodgman, an edge of the rectangle at a time. What a sub-path loses outside an
+    // edge it gains back along the edge, so a point inside keeps its winding number.
+    auto clip_edge = [](const std::vector<Point>& in, auto&& inside, auto&& cross) {
+      std::vector<Point> out;
+      if (in.empty())
+        return out;
+      out.reserve(in.size() + 4);
+      Point previous = in.back();
+      bool previous_inside = inside(previous);
+      for (const Point& point : in) {
+        bool point_inside = inside(point);
+        if (point_inside != previous_inside)
+          out.push_back(cross(previous, point));
+        if (point_inside)
+          out.push_back(point);
+        previous = point;
+        previous_inside = point_inside;
+      }
+      return out;
+    };
+    auto at_x = [](float x) {
+      return [x](const Point& a, const Point& b) {
+        float t = (x - a.x) / (b.x - a.x);
+        return Point(x, a.y + t * (b.y - a.y));
+      };
+    };
+    auto at_y = [](float y) {
+      return [y](const Point& a, const Point& b) {
+        float t = (y - a.y) / (b.y - a.y);
+        return Point(a.x + t * (b.x - a.x), y);
+      };
+    };
+
+    const float left = bounds.x();
+    const float top = bounds.y();
+    const float right = bounds.right();
+    const float bottom = bounds.bottom();
+
+    Path result = *this;
+    result.paths_.clear();
+    for (const SubPath& sub_path : paths_) {
+      std::vector<Point> points = sub_path.points;
+      points = clip_edge(points, [left](const Point& p) { return p.x >= left; }, at_x(left));
+      points = clip_edge(points, [right](const Point& p) { return p.x <= right; }, at_x(right));
+      points = clip_edge(points, [top](const Point& p) { return p.y >= top; }, at_y(top));
+      points = clip_edge(points, [bottom](const Point& p) { return p.y <= bottom; }, at_y(bottom));
+      if (points.size() > 2)
+        result.paths_.push_back({ std::move(points), true });
+    }
+    return result;
+  }
+
   Path Path::combine(Path& other, FillRule fill_rule) const {
     Path combined = *this;
     for (auto& path : other.paths_)
