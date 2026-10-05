@@ -154,7 +154,18 @@ namespace visage {
       error_message_ = renderer_name + " is required and not supported on this computer.";
     }
 
-    bgfx::init(bgfx_init);
+    // A device that cannot be had (a virtual machine, a remote session, a process with no
+    // window server) leaves the renderer uninitialized, and nothing draws, rather than every
+    // later call failing inside bgfx.
+    if (!bgfx::init(bgfx_init)) {
+      stop();
+      render_thread_started_ = false;
+      initialized_ = false;
+      supported_ = false;
+      if (error_message_.empty())
+        error_message_ = std::string(bgfx::getRendererName(bgfx_init.type)) + " could not be started.";
+      return;
+    }
     VISAGE_ASSERT(bgfx::getRendererType() == bgfx_init.type);
     swap_chain_supported_ = bgfx::getCaps()->supported & BGFX_CAPS_SWAP_CHAIN;
   }

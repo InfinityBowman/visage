@@ -115,6 +115,9 @@ namespace visage {
     window_ = window;
 
     Renderer::instance().initialize(window_->initWindow(), window->globalDisplay());
+    if (!Renderer::instance().initialized())
+      return;
+
     canvas_->pairToWindow(window_->nativeHandle(), window->clientWidth(), window->clientHeight());
     top_level_->setDpiScale(window_->dpiScale());
     top_level_->setNativeBounds(0, 0, window->clientWidth(), window->clientHeight());
@@ -150,6 +153,9 @@ namespace visage {
 
   void ApplicationEditor::drawWindow() {
     if (window_ && !window_->isVisible())
+      return;
+
+    if (window_ && !Renderer::instance().initialized())
       return;
 
     if (width() == 0 || height() == 0)
