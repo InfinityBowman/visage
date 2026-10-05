@@ -155,6 +155,11 @@ namespace visage {
     return nullptr;
   }
 
+  std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
+                                              void* parent_handle) {
+    return createPluginWindow(width, height, parent_handle);
+  }
+
   void showMessageBox(std::string title, std::string message) {
     std::string escaped_message;
     for (char c : message) {

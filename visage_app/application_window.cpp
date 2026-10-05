@@ -69,6 +69,14 @@ namespace visage {
     show(Dimension::nativePixels(nativeWidth()), Dimension::nativePixels(nativeHeight()), parent_window);
   }
 
+  void ApplicationWindow::showOverlay(void* parent_window) {
+    VISAGE_ASSERT(width() && height());
+    removeFromWindow();
+    window_ = createOverlayWindow(Dimension::nativePixels(nativeWidth()),
+                                  Dimension::nativePixels(nativeHeight()), parent_window);
+    showWindow(false);
+  }
+
   void ApplicationWindow::show(const Dimension& width, const Dimension& height, void* parent_window) {
     removeFromWindow();
     window_ = createPluginWindow(width, height, parent_window);

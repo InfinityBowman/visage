@@ -1020,6 +1020,14 @@ namespace visage {
   }
 
   LRESULT WindowWin32::handleWindowProc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
+    // An overlay lets every press through to the window beneath it, and is never activated.
+    if (isOverlay()) {
+      if (msg == WM_NCHITTEST)
+        return HTTRANSPARENT;
+      if (msg == WM_MOUSEACTIVATE)
+        return MA_NOACTIVATE;
+    }
+
     switch (msg) {
     case WM_VBLANK: {
       drawCallback(v_blank_thread_->vBlankTime());
@@ -1434,6 +1442,12 @@ namespace visage {
     return std::make_unique<WindowWin32>(bounds.width(), bounds.height(), parent_handle);
   }
 
+  std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
+                                              void* parent_handle) {
+    IBounds bounds = computeWindowBounds(0, 0, width, height);
+    return std::make_unique<WindowWin32>(bounds.width(), bounds.height(), parent_handle, true);
+  }
+
   WindowWin32::WindowWin32(int x, int y, int width, int height, Decoration decoration) :
       Window(width, height), decoration_(decoration) {
     static constexpr int kWindowFlags = WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX |
@@ -1473,8 +1487,10 @@ namespace visage {
     finishWindowSetup();
   }
 
-  WindowWin32::WindowWin32(int width, int height, void* parent_handle) : Window(width, height) {
+  WindowWin32::WindowWin32(int width, int height, void* parent_handle, bool overlay) :
+      Window(width, height) {
     static constexpr int kWindowFlags = WS_CHILD;
+    setOverlay(overlay);
 
     DpiAwareness dpi_awareness;
     setDpiScale(dpi_awareness.dpiScale());
@@ -1495,11 +1511,14 @@ namespace visage {
 
     SetWindowLongPtr(window_handle_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 
-    auto parent_proc = SetWindowLongPtr(parent_handle_, GWLP_WNDPROC,
-                                        reinterpret_cast<LONG_PTR>(pluginParentWindowProc));
-    parent_window_proc_ = reinterpret_cast<WNDPROC>(parent_proc);
-
-    event_hooks_ = std::make_unique<EventHooks>();
+    // An overlay leaves its parent's messages and the keyboard to the parent: its size is
+    // the parent's to set, and it takes no keys.
+    if (!overlay) {
+      auto parent_proc = SetWindowLongPtr(parent_handle_, GWLP_WNDPROC,
+                                          reinterpret_cast<LONG_PTR>(pluginParentWindowProc));
+      parent_window_proc_ = reinterpret_cast<WNDPROC>(parent_proc);
+      event_hooks_ = std::make_unique<EventHooks>();
+    }
     finishWindowSetup();
   }
 
@@ -1519,7 +1538,7 @@ namespace visage {
       drag_drop_target_->Release();
     }
 
-    if (parent_handle_)
+    if (parent_handle_ && parent_window_proc_)
       SetWindowLongPtr(parent_handle_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(parent_window_proc_));
 
     NativeWindowLookup::instance().removeWindow(this);
@@ -1549,6 +1568,12 @@ namespace visage {
   }
 
   void WindowWin32::show(int show_flag) {
+    if (isOverlay()) {
+      ShowWindow(window_handle_, SW_SHOWNA);
+      handleWindowShown();
+      return;
+    }
+
     ShowWindow(window_handle_, show_flag);
     SetFocus(window_handle_);
 

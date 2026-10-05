@@ -45,6 +45,7 @@ namespace visage {
 @property(strong) VisageDraggingSource* drag_source;
 @property bool allow_quit;
 @property NSPoint mouse_down_screen_position;
+@property bool overlay;
 
 - (instancetype)initWithFrame:(NSRect)frame_rect inWindow:(visage::WindowMac*)window;
 @end
@@ -66,7 +67,7 @@ namespace visage {
   class WindowMac : public Window {
   public:
     WindowMac(int x, int y, int width, int height, float scale, Decoration decoration);
-    WindowMac(int width, int height, float scale, void* parent_handle);
+    WindowMac(int width, int height, float scale, void* parent_handle, bool overlay = false);
 
     ~WindowMac() override;
 

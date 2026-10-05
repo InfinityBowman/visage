@@ -479,6 +479,11 @@ namespace visage {
     return std::make_unique<WindowX11>(bounds.width(), bounds.height(), parent_handle);
   }
 
+  std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
+                                              void* parent_handle) {
+    return createPluginWindow(width, height, parent_handle);
+  }
+
   X11Connection::Cursors::Cursors(Display* display) {
     if (display == nullptr)
       return;

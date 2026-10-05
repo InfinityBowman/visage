@@ -366,7 +366,14 @@ namespace visage {
 }
 
 - (BOOL)acceptsFirstResponder {
-  return YES;
+  return !self.overlay;
+}
+
+// An overlay lets every press through to the view beneath it.
+- (NSView*)hitTest:(NSPoint)point {
+  if (self.overlay)
+    return nil;
+  return [super hitTest:point];
 }
 
 - (void)keyDown:(NSEvent*)event {
@@ -621,9 +628,11 @@ namespace visage {
   [super viewWillMoveToWindow:new_window];
 
   if (new_window) {
-    [new_window setAcceptsMouseMovedEvents:YES];
-    [new_window setIgnoresMouseEvents:NO];
-    [new_window makeFirstResponder:self];
+    if (!self.overlay) {
+      [new_window setAcceptsMouseMovedEvents:YES];
+      [new_window setIgnoresMouseEvents:NO];
+      [new_window makeFirstResponder:self];
+    }
     if (self.visage_window)
       self.visage_window->setParentWindow(new_window);
 
@@ -853,6 +862,13 @@ namespace visage {
     return std::make_unique<WindowMac>(bounds.width(), bounds.height(), scale, parent_handle);
   }
 
+  std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
+                                              void* parent_handle) {
+    float scale = 1.0f;
+    IBounds bounds = computeWindowBoundsWithScale({}, {}, width, height, scale);
+    return std::make_unique<WindowMac>(bounds.width(), bounds.height(), scale, parent_handle, true);
+  }
+
   WindowMac::WindowMac(int x, int y, int width, int height, float scale, Decoration decoration) :
       Window(width, height), decoration_(decoration) {
     setDpiScale(scale);
@@ -870,8 +886,9 @@ namespace visage {
     NativeWindowLookup::instance().addWindow(this);
   }
 
-  WindowMac::WindowMac(int width, int height, float scale, void* parent_handle) :
+  WindowMac::WindowMac(int width, int height, float scale, void* parent_handle, bool overlay) :
       Window(width, height) {
+    setOverlay(overlay);
     setDpiScale(scale);
     parent_view_ = (__bridge NSView*)parent_handle;
     CGRect view_frame = CGRectMake(0.0f, 0.0f, width / scale, height / scale);
@@ -880,6 +897,20 @@ namespace visage {
     view_delegate_ = [[VisageAppViewDelegate alloc] initWithWindow:this];
     view_.delegate = view_delegate_;
     view_.allow_quit = false;
+    view_.overlay = overlay;
+    if (overlay) {
+      // The caller's clock draws it (drawCallback), and only then: MetalKit's own loop
+      // would take a drawable of its own each frame besides the one bgfx draws into.
+      view_.paused = YES;
+      view_.enableSetNeedsDisplay = NO;
+      [view_ unregisterDraggedTypes];
+      // What the parent draws is sRGB, so what is laid over it is too.
+      CGColorSpaceRef srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+      ((CAMetalLayer*)view_.layer).colorspace = srgb;
+      CGColorSpaceRelease(srgb);
+      view_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+      view_.layer.contentsScale = scale;
+    }
     [parent_view_ addSubview:view_];
 
     NativeWindowLookup::instance().addWindow(this);
@@ -940,14 +971,19 @@ namespace visage {
       return;
 
     window_handle_ = window;
-    [window_handle_ makeFirstResponder:view_];
-    [NSApp activateIgnoringOtherApps:YES];
+    if (!isOverlay()) {
+      [window_handle_ makeFirstResponder:view_];
+      [NSApp activateIgnoringOtherApps:YES];
+    }
     resetBackingScale();
   }
 
   void WindowMac::resetBackingScale() {
-    if (window_handle_)
+    if (window_handle_) {
       setDpiScale([window_handle_ backingScaleFactor]);
+      if (isOverlay())
+        view_.layer.contentsScale = dpiScale();
+    }
   }
 
   void WindowMac::windowContentsResized(int width, int height) {

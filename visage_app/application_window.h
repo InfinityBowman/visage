@@ -56,6 +56,9 @@ namespace visage {
 
     void show();
     void show(void* parent_window);
+    // Over the parent's own drawing, on the caller's clock (Window::isOverlay): it is drawn
+    // by drawCallback() on window(), and only then.
+    void showOverlay(void* parent_window);
     void show(const Dimension& width, const Dimension& height, void* parent_window);
     void show(const Dimension& width, const Dimension& height);
     void show(const Dimension& x, const Dimension& y, const Dimension& width, const Dimension& height);

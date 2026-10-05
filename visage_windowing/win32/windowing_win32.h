@@ -56,7 +56,7 @@ namespace visage {
     static HCURSOR cursor() { return cursor_; }
 
     WindowWin32(int x, int y, int width, int height, Decoration decoration);
-    WindowWin32(int width, int height, void* parent_handle);
+    WindowWin32(int width, int height, void* parent_handle, bool overlay = false);
 
     ~WindowWin32() override;
 

@@ -114,6 +114,12 @@ namespace visage {
     virtual IPoint maxWindowDimensions() const = 0;
     virtual void setAlwaysOnTop(bool on_top) { }
 
+    // An overlay is a child window laid over its parent's own drawing, as a plugin's GPU
+    // layer over the rest of its editor: it never takes the keyboard or the mouse, which
+    // stay with the window beneath it, and it has no clock of its own, drawing only when
+    // drawCallback() is called. Made by createOverlayWindow().
+    bool isOverlay() const { return overlay_; }
+
     void setDrawCallback(std::function<void(double)> callback) {
       draw_callback_ = std::move(callback);
     }
@@ -186,6 +192,9 @@ namespace visage {
     void cleanupDragDropSource();
     void setVisible(bool visible) { visible_ = visible; }
 
+  protected:
+    void setOverlay(bool overlay) { overlay_ = overlay; }
+
   private:
     static int double_click_speed_;
 
@@ -202,6 +211,7 @@ namespace visage {
     float dpi_scale_ = 1.0f;
     bool visible_ = true;
     bool mouse_relative_mode_ = false;
+    bool overlay_ = false;
     int client_width_ = 0;
     int client_height_ = 0;
 
@@ -230,6 +240,10 @@ namespace visage {
                                        Window::Decoration decoration_style = Window::Decoration::Native);
   std::unique_ptr<Window> createPluginWindow(const Dimension& width, const Dimension& height,
                                              void* parent_handle);
+  // A plugin window that is an overlay (Window::isOverlay). Where a platform has no
+  // overlay of its own it is a plugin window.
+  std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
+                                              void* parent_handle);
 
   inline std::unique_ptr<Window> createWindow(const Dimension& width, const Dimension& height,
                                               Window::Decoration decoration_style = Window::Decoration::Native) {
