@@ -21,6 +21,8 @@
 
 #include "path.h"
 
+#include "renderer.h"
+
 #include "embedded/shaders.h"
 #include "graphics_caches.h"
 #include "shape_batcher.h"
@@ -627,7 +629,12 @@ namespace visage {
   template<const char* name>
   void setPathUniform(float value0, float value1 = 0.0f, float value2 = 0.0f, float value3 = 0.0f) {
     float values[4] = { value0, value1, value2, value3 };
-    static const bgfx::UniformHandle uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+    static bgfx::UniformHandle uniform = BGFX_INVALID_HANDLE;
+    static int generation = -1;
+    if (generation != Renderer::generation()) {
+      uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+      generation = Renderer::generation();
+    }
     bgfx::setUniform(uniform, values);
   }
 
