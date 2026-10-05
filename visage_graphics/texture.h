@@ -47,8 +47,10 @@ namespace visage {
     Format format() const { return format_; }
     int bytesPerTexel() const;
 
-    // width * height texels, row by row, in the format's own layout.
-    void setData(const void* data);
+    // width * height texels, row by row, in the format's own layout. Not kept, the copy is
+    // let go once it is on the GPU, and a texture made again after the device is shut down
+    // is clear.
+    void setData(const void* data, bool keep = true);
     const std::vector<uint8_t>& data() const { return data_; }
 
     // For the renderer: the texture as the GPU has it now.
@@ -62,6 +64,7 @@ namespace visage {
     Format format_ = Format::RGBA8;
     std::vector<uint8_t> data_;
     bool stale_ = true;
+    bool keep_ = true;
     std::unique_ptr<Handle> handle_;
   };
 }

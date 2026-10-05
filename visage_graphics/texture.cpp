@@ -63,8 +63,10 @@ namespace visage {
     return 4;
   }
 
-  void Texture::setData(const void* data) {
+  void Texture::setData(const void* data, bool keep) {
+    data_.assign(static_cast<size_t>(width_) * height_ * bytesPerTexel(), 0);
     std::memcpy(data_.data(), data, data_.size());
+    keep_ = keep;
     stale_ = true;
   }
 
@@ -80,10 +82,12 @@ namespace visage {
       h.handle = bgfx::createTexture2D(width_, height_, false, 1, bgfxFormat(format_),
                                        BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
     }
-    if (stale_ && bgfx::isValid(h.handle)) {
+    if (stale_ && bgfx::isValid(h.handle) && !data_.empty()) {
       bgfx::updateTexture2D(h.handle, 0, 0, 0, 0, width_, height_,
                             bgfx::copy(data_.data(), static_cast<uint32_t>(data_.size())));
       stale_ = false;
+      if (!keep_)
+        std::vector<uint8_t>().swap(data_);
     }
     return h.handle.idx;
   }
