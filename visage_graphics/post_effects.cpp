@@ -72,19 +72,27 @@ namespace visage {
     }
 
     void destroyFrameBuffers() {
+      bool destroyed = false;
       for (auto& buffer : downsample_buffers1) {
-        if (bgfx::isValid(buffer))
+        if (bgfx::isValid(buffer)) {
           bgfx::destroy(buffer);
+          destroyed = true;
+        }
         buffer = BGFX_INVALID_HANDLE;
       }
       for (auto& buffer : downsample_buffers2) {
-        if (bgfx::isValid(buffer))
+        if (bgfx::isValid(buffer)) {
           bgfx::destroy(buffer);
+          destroyed = true;
+        }
         buffer = BGFX_INVALID_HANDLE;
       }
 
-      bgfx::frame();
-      bgfx::frame();
+      // Only what was made is let go, and only a device that is up has frames to give.
+      if (destroyed && Renderer::instance().initialized()) {
+        bgfx::frame();
+        bgfx::frame();
+      }
     }
   };
 
