@@ -48,9 +48,7 @@ namespace visage {
   }
 
   Texture::Texture(int width, int height, Format format) :
-      width_(width), height_(height), format_(format), handle_(std::make_unique<Handle>()) {
-    data_.assign(static_cast<size_t>(width_) * height_ * bytesPerTexel(), 0);
-  }
+      width_(width), height_(height), format_(format), handle_(std::make_unique<Handle>()) { }
 
   Texture::~Texture() = default;
 
