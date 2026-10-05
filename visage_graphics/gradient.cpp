@@ -153,9 +153,14 @@ namespace visage {
   void GradientAtlas::resize() {
     int prev_width = atlas_map_.width();
     int prev_height = atlas_map_.height();
+    // Packed as tight as what is live, then with as much again free: a gradient that lives
+    // a frame or two would otherwise fill it each frame, and each repack sends every
+    // gradient to the GPU again.
+    clearStaleGradients();
     atlas_map_.pack();
+    atlas_map_.pack(atlas_map_.width(), atlas_map_.height() * 2);
     repacked_ = true;
-    if (atlas_map_.width() != prev_width && atlas_map_.height() != prev_height)
+    if (atlas_map_.width() != prev_width || atlas_map_.height() != prev_height)
       texture_.reset();
 
     for (auto& gradient : gradients_) {
