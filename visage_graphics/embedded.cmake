@@ -1,6 +1,11 @@
 
 function(visage_embed_shaders project include_filename namespace original_shaders)
   file(GLOB_RECURSE SHADER_INCLUDES shaders/*.sh shaders/varying.def.sc)
+  # What a shader can include, from where shaderc is told to look (-i below) and beside it: a
+  # change to any compiles every shader again.
+  file(GLOB LIBRARY_SHADER_INCLUDES ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders/*.sh
+                                    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders/varying.def.sc)
+  set(SHADER_DEPENDENCIES ${SHADER_INCLUDES} ${LIBRARY_SHADER_INCLUDES})
 
   set(SHADER_FOLDER ${CMAKE_CURRENT_BINARY_DIR}/shaders)
   set(DX_FOLDER ${CMAKE_CURRENT_BINARY_DIR}/shaders/dx)
@@ -53,7 +58,7 @@ function(visage_embed_shaders project include_filename namespace original_shader
       add_custom_command(
         OUTPUT ${ESSL_PATH}
         COMMAND ${SHADERC} -i ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders -O3 -f ${SHADER} -o ${ESSL_PATH} --type ${SHADER_TYPE} --platform ${SHADER_PLATFORM} -p 100_es
-        DEPENDS ${SHADER}
+        DEPENDS ${SHADER} ${SHADER_DEPENDENCIES}
       )
     endif()
 
@@ -63,7 +68,7 @@ function(visage_embed_shaders project include_filename namespace original_shader
       add_custom_command(
         OUTPUT ${DX_PATH}
         COMMAND ${SHADERC} -i ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders -O3 -f ${SHADER} -o ${DX_PATH} --type ${SHADER_TYPE} --platform ${SHADER_PLATFORM} -p s_4_0
-        DEPENDS ${SHADER}
+        DEPENDS ${SHADER} ${SHADER_DEPENDENCIES}
       )
     endif()
 
@@ -73,7 +78,7 @@ function(visage_embed_shaders project include_filename namespace original_shader
       add_custom_command(
         OUTPUT ${METAL_PATH}
         COMMAND ${SHADERC} -i ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders -f ${SHADER} -o ${METAL_PATH} --type ${SHADER_TYPE} --platform ${SHADER_PLATFORM} -p metal
-        DEPENDS ${SHADER}
+        DEPENDS ${SHADER} ${SHADER_DEPENDENCIES}
       )
     endif()
 
@@ -83,7 +88,7 @@ function(visage_embed_shaders project include_filename namespace original_shader
       add_custom_command(
         OUTPUT ${GLSL_PATH}
         COMMAND ${SHADERC} -i ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders -f ${SHADER} -o ${GLSL_PATH} --type ${SHADER_TYPE} --platform ${SHADER_PLATFORM} -p 120
-        DEPENDS ${SHADER}
+        DEPENDS ${SHADER} ${SHADER_DEPENDENCIES}
       )
     endif()
 
@@ -93,7 +98,7 @@ function(visage_embed_shaders project include_filename namespace original_shader
       add_custom_command(
         OUTPUT ${SPIRV_PATH}
         COMMAND ${SHADERC} -i ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/shaders -f ${SHADER} -o ${SPIRV_PATH} --type ${SHADER_TYPE} --platform ${SHADER_PLATFORM} -p spirv
-        DEPENDS ${SHADER}
+        DEPENDS ${SHADER} ${SHADER_DEPENDENCIES}
       )
     endif()
   endforeach()
