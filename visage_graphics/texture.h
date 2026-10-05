@@ -49,6 +49,7 @@ namespace visage {
 
     // width * height texels, row by row, in the format's own layout.
     void setData(const void* data);
+    const std::vector<uint8_t>& data() const { return data_; }
 
     // For the renderer: the texture as the GPU has it now.
     uint16_t handleIndex();
