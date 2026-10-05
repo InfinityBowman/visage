@@ -592,6 +592,48 @@ TEST_CASE("Canvas erase and lay replace what a shape covers", "[graphics]") {
   }
 }
 
+TEST_CASE("Canvas cuts a stretched image where it is clamped, and does not squeeze it", "[graphics]") {
+  // Four texels, red, green, blue and white, stretched over 80 pixels: twenty to a texel,
+  // read between texels as filtering reads them.
+  static const unsigned char kTexels[] = { 255, 0, 0,   255, 0,   255, 0,   255,
+                                           0,   0, 255, 255, 255, 255, 255, 255 };
+  Image image(kTexels, sizeof(kTexels), 4, 1);
+  image.raw = true;
+
+  auto draw = [&](float clamp_left, float clamp_right) {
+    Canvas canvas;
+    canvas.setWindowless(100, 40);
+    canvas.setColor(0xff000000);
+    canvas.fill(0, 0, canvas.width(), canvas.height());
+    canvas.setClampBounds(clamp_left, 0, clamp_right - clamp_left, 40);
+    canvas.setColor(0xffffffff);
+    canvas.image(image, 0, 0, 80, 20);
+    canvas.submit();
+    return canvas.takeScreenshot();
+  };
+
+  SECTION("Cut on its left, what is left is where it was") {
+    const Screenshot cut = draw(50, 100);
+    const Color white = cut.sample(70, 10);
+    REQUIRE(white.hexRed() > 0xc0);
+    REQUIRE(white.hexGreen() > 0xc0);
+    REQUIRE(white.hexBlue() > 0xc0);
+    const Color blue = cut.sample(52, 10);
+    REQUIRE(blue.hexRed() < 0x40);
+    REQUIRE(blue.hexBlue() > 0xc0);
+  }
+
+  SECTION("Cut on its right, what is left is where it was") {
+    const Screenshot cut = draw(0, 30);
+    const Color red = cut.sample(10, 10);
+    REQUIRE(red.hexRed() > 0xc0);
+    REQUIRE(red.hexGreen() < 0x40);
+    const Color green = cut.sample(27, 10);
+    REQUIRE(green.hexGreen() > 0xc0);
+    REQUIRE(green.hexRed() < 0x40);
+  }
+}
+
 TEST_CASE("Canvas fills a clamped path as the whole path wherever it shows", "[graphics]") {
   // A five-pointed star, which crosses itself: its middle is wound twice, so the two fill rules
   // differ there.

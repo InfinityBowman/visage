@@ -466,6 +466,13 @@ namespace visage {
 
     void setVertexData(Vertex* vertices) const {
       image_atlas->setImageCoordinates(vertices, packed_image);
+      // Texels to a pixel on each axis, for the shader to cut a clamped quad's texels by.
+      const float texels_x = width > 0.0f ? packed_image.w() / width : 1.0f;
+      const float texels_y = height > 0.0f ? packed_image.h() / height : 1.0f;
+      for (int i = 0; i < kVerticesPerQuad; ++i) {
+        vertices[i].direction_x = texels_x;
+        vertices[i].direction_y = texels_y;
+      }
     }
 
     ImageAtlas::PackedImage packed_image;
