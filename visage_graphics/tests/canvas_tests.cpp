@@ -541,3 +541,51 @@ TEST_CASE("Canvas edge cases", "[graphics]") {
     REQUIRE_NOTHROW(canvas.circle(100, 100, 500));
   }
 }
+TEST_CASE("Canvas erase and lay replace what a shape covers", "[graphics]") {
+  static constexpr int kTestWidth = 200;
+  static constexpr int kTestHeight = 200;
+  const Color half_green(0.5f, 0.0f, 1.0f, 0.0f);
+
+  // A translucent circle over red: drawn as usual, or in place of the red.
+  auto draw = [&](bool over_red, BlendMode erase, BlendMode lay) {
+    Canvas canvas;
+    canvas.setWindowless(kTestWidth, kTestHeight);
+    if (over_red) {
+      canvas.setColor(0xffff0000);
+      canvas.fill(0, 0, canvas.width(), canvas.height());
+    }
+    if (erase == BlendMode::Erase) {
+      canvas.setBlendMode(BlendMode::Erase);
+      canvas.setColor(0xffffffff);
+      canvas.circle(50, 50, 100);
+    }
+    canvas.setBlendMode(lay);
+    canvas.setColor(half_green);
+    canvas.circle(50, 50, 100);
+    canvas.setBlendMode(BlendMode::Alpha);
+
+    canvas.submit();
+    return canvas.takeScreenshot();
+  };
+
+  const Screenshot alone = draw(false, BlendMode::Alpha, BlendMode::Alpha);
+  const Color expected = alone.sample(100, 100);
+
+  SECTION("Over the red, a translucent shape shows it") {
+    const Screenshot over = draw(true, BlendMode::Alpha, BlendMode::Alpha);
+    REQUIRE(over.sample(100, 100).hexRed() > 0x40);
+  }
+
+  SECTION("In place of the red, it is as it is over nothing") {
+    const Screenshot replaced = draw(true, BlendMode::Erase, BlendMode::Lay);
+    const Color center = replaced.sample(100, 100);
+    REQUIRE(center.hexRed() == expected.hexRed());
+    REQUIRE(center.hexGreen() == expected.hexGreen());
+    REQUIRE(center.hexBlue() == expected.hexBlue());
+    REQUIRE(center.hexAlpha() == expected.hexAlpha());
+
+    const Color outside = replaced.sample(10, 10);
+    REQUIRE(outside.hexRed() == 0xff);
+    REQUIRE(outside.hexAlpha() == 0xff);
+  }
+}

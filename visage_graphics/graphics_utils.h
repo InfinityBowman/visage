@@ -51,6 +51,12 @@ namespace visage {
     Mult,
     MaskAdd,
     MaskRemove,
+    // Takes away what is under the shape by its coverage, colour and alpha
+    // both: with Lay after it, a shape replaces what it covers, edges and all.
+    Erase,
+    // Adds the shape by its coverage, colour and alpha both: into what Erase
+    // cleared, exactly the shape over nothing.
+    Lay,
   };
 
   static constexpr float kHdrColorRange = 4.0f;
