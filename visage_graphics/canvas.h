@@ -437,9 +437,23 @@ namespace visage {
 
     template<typename T1, typename T2>
     void image(const Image& image, const T1& x, const T2& y) {
+      if (image.raw) {
+        // Its texels are the device's pixels already.
+        addShape(ImageWrapper(state_.clamp, state_.brush, state_.x + pixels(x), state_.y + pixels(y),
+                              image.width, image.height, image, imageAtlas()));
+        return;
+      }
       int w = std::round(pixels(image.width));
       int h = std::round(pixels(image.height));
       addImage({ image.data, image.data_size, w, h }, pixels(x), pixels(y));
+    }
+
+    // A raw image (Image::raw) stretched over width by height.
+    template<typename T1, typename T2, typename T3, typename T4>
+    void image(const Image& image, const T1& x, const T2& y, const T3& width, const T4& height) {
+      VISAGE_ASSERT(image.raw);
+      addShape(ImageWrapper(state_.clamp, state_.brush, state_.x + pixels(x), state_.y + pixels(y),
+                            pixels(width), pixels(height), image, imageAtlas()));
     }
 
     template<typename T1, typename T2, typename T3, typename T4>

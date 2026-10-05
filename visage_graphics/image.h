@@ -24,6 +24,7 @@
 #include "graphics_utils.h"
 
 #include <map>
+#include <tuple>
 #include <utility>
 
 namespace visage {
@@ -36,18 +37,21 @@ namespace visage {
     int data_size = 0;
     int width = 0;
     int height = 0;
+    // `data` is width by height RGBA8 texels, not an encoded file. The atlas reads it again
+    // when it repacks, so it must outlive every drawing of it.
     bool raw = false;
+    // Which content of `data` this is: an image is uploaded once per revision, so pixels
+    // rewritten in place are drawn only under a new one.
+    unsigned long long revision = 0;
 
     bool operator==(const Image& other) const {
       return data == other.data && data_size == other.data_size && width == other.width &&
-             height == other.height;
+             height == other.height && revision == other.revision;
     }
 
     bool operator<(const Image& other) const {
-      return data < other.data || (data == other.data && data_size < other.data_size) ||
-             (data == other.data && data_size == other.data_size && width < other.width) ||
-             (data == other.data && data_size == other.data_size && width == other.width &&
-              height < other.height);
+      return std::tie(data, data_size, width, height, revision) <
+             std::tie(other.data, other.data_size, other.width, other.height, other.revision);
     }
   };
 
