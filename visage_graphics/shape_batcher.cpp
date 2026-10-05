@@ -32,6 +32,8 @@
 #include "uniforms.h"
 #include "visage_utils/space.h"
 
+#include "renderer.h"
+
 #include <bgfx/bgfx.h>
 
 namespace visage {
@@ -76,20 +78,35 @@ namespace visage {
 
   template<const char* name>
   void setUniform(const void* value) {
-    static const bgfx::UniformHandle uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+    static bgfx::UniformHandle uniform = BGFX_INVALID_HANDLE;
+    static int generation = -1;
+    if (generation != Renderer::generation()) {
+      uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+      generation = Renderer::generation();
+    }
     bgfx::setUniform(uniform, value);
   }
 
   template<const char* name>
   void setUniform(float value0, float value1 = 0.0f, float value2 = 0.0f, float value3 = 0.0f) {
-    static const bgfx::UniformHandle uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+    static bgfx::UniformHandle uniform = BGFX_INVALID_HANDLE;
+    static int generation = -1;
+    if (generation != Renderer::generation()) {
+      uniform = bgfx::createUniform(name, bgfx::UniformType::Vec4, 1);
+      generation = Renderer::generation();
+    }
     float vec[4] = { value0, value1, value2, value3 };
     bgfx::setUniform(uniform, vec);
   }
 
   template<const char* name>
   void setTexture(int stage, bgfx::TextureHandle handle) {
-    static const bgfx::UniformHandle uniform = bgfx::createUniform(name, bgfx::UniformType::Sampler, 1);
+    static bgfx::UniformHandle uniform = BGFX_INVALID_HANDLE;
+    static int generation = -1;
+    if (generation != Renderer::generation()) {
+      uniform = bgfx::createUniform(name, bgfx::UniformType::Sampler, 1);
+      generation = Renderer::generation();
+    }
     bgfx::setTexture(stage, uniform, handle);
   }
 

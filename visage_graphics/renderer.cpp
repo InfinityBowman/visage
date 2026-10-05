@@ -21,6 +21,8 @@
 
 #include "renderer.h"
 
+#include "graphics_caches.h"
+
 #include "visage_utils/string_utils.h"
 
 #include <bgfx/bgfx.h>
@@ -155,6 +157,22 @@ namespace visage {
     bgfx::init(bgfx_init);
     VISAGE_ASSERT(bgfx::getRendererType() == bgfx_init.type);
     swap_chain_supported_ = bgfx::getCaps()->supported & BGFX_CAPS_SWAP_CHAIN;
+  }
+
+  void Renderer::shutdown() {
+    if (!initialized_)
+      return;
+
+    ShaderCache::releaseAll();
+    ProgramCache::releaseAll();
+    UniformCache::releaseAll();
+    ++generationCount();
+    bgfx::shutdown();
+    stop();
+    render_thread_started_ = false;
+    initialized_ = false;
+    supported_ = false;
+    swap_chain_supported_ = false;
   }
 
   void Renderer::resetResolution(int width, int height) {

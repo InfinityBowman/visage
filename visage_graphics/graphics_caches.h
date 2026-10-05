@@ -52,6 +52,9 @@ namespace visage {
 
     static void restoreShader(const EmbeddedFile& file) { instance()->restore(file); }
 
+    // Destroys every shader, for the device's shutdown.
+    static void releaseAll() { instance()->release(); }
+
     static const char* originalData(const std::string& name) {
       return instance()->shaderData(name);
     }
@@ -59,6 +62,8 @@ namespace visage {
   private:
     ShaderCache();
     ~ShaderCache();
+
+    void release() const;
 
     bgfx::ShaderHandle& handle(const EmbeddedFile& file) const;
     bgfx::ShaderHandle& handle(const char* data) const;
@@ -105,9 +110,14 @@ namespace visage {
 
     static std::vector<ShaderPair> programList() { return instance()->listPrograms(); }
 
+    // Destroys every program, for the device's shutdown.
+    static void releaseAll() { instance()->release(); }
+
   private:
     ProgramCache();
     ~ProgramCache();
+
+    void release() const;
 
     std::vector<ShaderPair> listPrograms() const;
 
@@ -135,6 +145,9 @@ namespace visage {
       return &cache;
     }
 
+    // Destroys every uniform, for the device's shutdown.
+    static void releaseAll() { instance()->release(); }
+
     static bgfx::UniformHandle& uniformHandle(const char* name, Type type = Vec4) {
       return instance()->handle(name, type);
     }
@@ -142,6 +155,8 @@ namespace visage {
   private:
     UniformCache();
     ~UniformCache();
+
+    void release() const;
 
     bgfx::UniformHandle& handle(const char* name, Type type, int size = 1) const;
 

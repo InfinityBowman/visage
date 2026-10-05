@@ -36,8 +36,17 @@ namespace visage {
   }
 
   ShaderCache::~ShaderCache() {
-    for (const auto& shader : cache_->cache)
-      bgfx::destroy(shader.second);
+    release();
+  }
+
+  void ShaderCache::release() const {
+    for (const auto& shader : cache_->cache) {
+      if (bgfx::isValid(shader.second))
+        bgfx::destroy(shader.second);
+    }
+    cache_->cache.clear();
+    cache_->originals.clear();
+    cache_->name_lookup.clear();
   }
 
   bgfx::ShaderHandle& ShaderCache::handle(const EmbeddedFile& file) const {
@@ -95,12 +104,19 @@ namespace visage {
   }
 
   ProgramCache::~ProgramCache() {
+    release();
+  }
+
+  void ProgramCache::release() const {
     for (const auto& programs : cache_->cache) {
       for (const auto& program : programs.second) {
         if (bgfx::isValid(program.second))
           bgfx::destroy(program.second);
       }
     }
+    cache_->cache.clear();
+    cache_->originals.clear();
+    cache_->shader_lookup.clear();
   }
 
   std::vector<ProgramCache::ShaderPair> ProgramCache::listPrograms() const {
@@ -174,8 +190,15 @@ namespace visage {
   }
 
   UniformCache::~UniformCache() {
-    for (const auto& uniform : cache_->cache)
-      bgfx::destroy(uniform.second);
+    release();
+  }
+
+  void UniformCache::release() const {
+    for (const auto& uniform : cache_->cache) {
+      if (bgfx::isValid(uniform.second))
+        bgfx::destroy(uniform.second);
+    }
+    cache_->cache.clear();
   }
 
   bgfx::UniformHandle& UniformCache::handle(const char* name, Type type, int size) const {
