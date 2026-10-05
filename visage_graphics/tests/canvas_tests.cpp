@@ -709,3 +709,39 @@ TEST_CASE("Canvas keeps the order of overlapping shapes among many in one batch"
   const Color circle = screenshot.sample(30, 30);
   REQUIRE(circle.hexRed() == 0xff);
 }
+
+TEST_CASE("Canvas draws one colour as that colour through the atlas would, and packs none", "[graphics]") {
+  // Translucent and brighter than white, so alpha and the colour's HDR both have to arrive.
+  const Color color(0x80ff8040, 2.0f);
+
+  auto draw = [&](const Brush& brush, int& gradients) {
+    Canvas canvas;
+    canvas.setWindowless(100, 100);
+    canvas.setColor(0xff202020);
+    canvas.fill(0, 0, canvas.width(), canvas.height());
+    canvas.setColor(brush);
+    canvas.circle(10, 10, 80);
+    canvas.roundedRectangle(5, 5, 40, 20, 6);
+    canvas.submit();
+    gradients = canvas.gradientAtlas()->numGradients();
+    return canvas.takeScreenshot();
+  };
+
+  int solid_gradients = 0;
+  int atlas_gradients = 0;
+  const Screenshot solid = draw(Brush::solid(color), solid_gradients);
+  const Screenshot atlas = draw(Brush::horizontal(color, color), atlas_gradients);
+
+  REQUIRE(solid_gradients == 0);
+  REQUIRE(atlas_gradients == 1);
+  auto near = [](unsigned int a, unsigned int b) { return (a > b ? a - b : b - a) <= 1; };
+  for (auto [x, y] : { std::pair { 50, 50 }, std::pair { 20, 12 }, std::pair { 50, 11 } }) {
+    const Color a = solid.sample(x, y);
+    const Color b = atlas.sample(x, y);
+    // The atlas holds half floats, the vertex the colour itself.
+    REQUIRE(near(a.hexRed(), b.hexRed()));
+    REQUIRE(near(a.hexGreen(), b.hexGreen()));
+    REQUIRE(near(a.hexBlue(), b.hexBlue()));
+    REQUIRE(near(a.hexAlpha(), b.hexAlpha()));
+  }
+}

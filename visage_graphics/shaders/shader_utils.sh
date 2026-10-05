@@ -56,7 +56,11 @@ vec2 radialGradient(vec2 position, vec2 focal_point, vec4 coefficient) {
 uniform vec4 u_radial_gradient;
 uniform vec4 u_color_mult;
 
+// A brush of one colour is not in the atlas: it comes as the colour itself, its alpha in the
+// first position as -1 - alpha, which no position in the atlas can be.
 vec4 sampleGradient(sampler2D gradient_texture, vec2 texture_pos1, vec2 texture_pos2, float t) {
+  if (texture_pos1.x < 0.0)
+    return u_color_mult * vec4(texture_pos1.y, texture_pos2.x, texture_pos2.y, -1.0 - texture_pos1.x);
   return u_color_mult * texture2D(gradient_texture, mix(texture_pos1, texture_pos2, t));
 }
 

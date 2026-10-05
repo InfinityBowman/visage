@@ -264,6 +264,7 @@ namespace visage {
         return reference_->packed_gradient_rect->gradient;
       }
 
+      PackedGradient() = default;
       explicit PackedGradient(std::shared_ptr<PackedGradientReference> reference) :
           reference_(std::move(reference)) { }
 
@@ -583,7 +584,14 @@ namespace visage {
   public:
     static void computeVertexGradientTexturePositions(GradientTexturePosition& result,
                                                       const PackedBrush* brush) {
-      if (brush) {
+      if (brush && brush->solid_) {
+        float mult = brush->color_.hdr() / Color::kGradientNormalization;
+        result.from_x = -1.0f - brush->color_.alpha();
+        result.from_y = brush->color_.red() * mult;
+        result.to_x = brush->color_.green() * mult;
+        result.to_y = brush->color_.blue() * mult;
+      }
+      else if (brush) {
         float atlas_x_scale = 1.0f / brush->atlasWidth();
         float atlas_y_scale = 1.0f / brush->atlasHeight();
         const auto& gradient = brush->gradient()->gradient();
@@ -663,22 +671,41 @@ namespace visage {
       }
     }
 
+    // A brush of one colour is drawn from the colour itself and takes no room in the atlas, so
+    // a colour that changes every frame, as an animation's does, costs nothing to pack.
     PackedBrush(GradientAtlas* atlas, const Gradient& gradient, const GradientPosition& position) :
-        atlas_(atlas), position_(position), gradient_(atlas->addGradient(gradient)) { }
+        atlas_(atlas), position_(position) {
+      pack(gradient);
+    }
 
     PackedBrush(GradientAtlas* atlas, const Brush& brush) :
-        atlas_(atlas), position_(brush.position()), gradient_(atlas->addGradient(brush.gradient())) { }
+        atlas_(atlas), position_(brush.position()) {
+      pack(brush.gradient());
+    }
 
-    const GradientAtlas::PackedGradient* gradient() const { return &gradient_; }
+    // nullptr for a brush of one colour.
+    const GradientAtlas::PackedGradient* gradient() const { return solid_ ? nullptr : &gradient_; }
     const GradientPosition& position() const { return position_; }
     int atlasWidth() const { return atlas_->width(); }
     int atlasHeight() const { return atlas_->height(); }
 
-    Brush originalBrush() const { return Brush(gradient_.gradient(), position_); }
+    Brush originalBrush() const {
+      return Brush(solid_ ? Gradient(color_) : gradient_.gradient(), position_);
+    }
 
   private:
+    void pack(const Gradient& gradient) {
+      solid_ = gradient.numColors() == 1;
+      if (solid_)
+        color_ = gradient.colors()[0];
+      else
+        gradient_ = atlas_->addGradient(gradient);
+    }
+
     GradientAtlas* atlas_ = nullptr;
     GradientPosition position_;
+    bool solid_ = false;
+    Color color_;
     GradientAtlas::PackedGradient gradient_;
 
     VISAGE_LEAK_CHECKER(PackedBrush)
