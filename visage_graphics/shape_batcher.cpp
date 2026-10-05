@@ -378,13 +378,24 @@ namespace visage {
       return;
 
     setUniform<Uniforms::kRadialGradient>(quads.radial_gradient ? 1.0f : 0.0f);
-    setBlendMode(BlendMode::Alpha);
     setTimeUniform(layer.time());
     setUniformDimensions(layer.width(), layer.height());
     setTexture<Uniforms::kGradient>(0, layer.gradientAtlas()->colorTextureHandle());
     setColorMult(layer.hdr());
     setOriginFlipUniform(layer.bottomLeftOrigin());
     Shader* shader = batches[0].shapes->front().shader;
+    for (const auto& [name, values] : shader->uniforms()) {
+      const int count = static_cast<int>(values.size() / 4);
+      bgfx::setUniform(UniformCache::uniformHandle(name.c_str(), UniformCache::Vec4, count),
+                       values.data(), count);
+    }
+    for (const auto& [stage, bound] : shader->textures()) {
+      if (bound.texture == nullptr)
+        continue;
+      bgfx::TextureHandle handle = { bound.texture->handleIndex() };
+      bgfx::setTexture(stage, UniformCache::uniformHandle(bound.sampler.c_str(), UniformCache::Sampler),
+                       handle);
+    }
     bgfx::submit(submit_pass,
                  ProgramCache::programHandle(shader->vertexShader(), shader->fragmentShader()));
   }

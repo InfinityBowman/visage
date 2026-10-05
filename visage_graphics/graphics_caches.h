@@ -148,8 +148,8 @@ namespace visage {
     // Destroys every uniform, for the device's shutdown.
     static void releaseAll() { instance()->release(); }
 
-    static bgfx::UniformHandle& uniformHandle(const char* name, Type type = Vec4) {
-      return instance()->handle(name, type);
+    static bgfx::UniformHandle& uniformHandle(const char* name, Type type = Vec4, int size = 1) {
+      return instance()->handle(name, type, size);
     }
 
   private:
