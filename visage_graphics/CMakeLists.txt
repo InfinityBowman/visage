@@ -72,7 +72,12 @@ FetchContent_Declare(freetype GIT_REPOSITORY https://gitlab.freedesktop.org/free
   GIT_TAG VER-2-14-1
   EXCLUDE_FROM_ALL
 )
+# Static whatever the parent asks: a library linked into a plugin cannot bring a shared one
+# of its own beside it.
+set(VISAGE_PARENT_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(freetype)
+set(BUILD_SHARED_LIBS ${VISAGE_PARENT_BUILD_SHARED_LIBS})
 set(CMAKE_MESSAGE_LOG_LEVEL "NOTICE")
 
 if (MSVC)
