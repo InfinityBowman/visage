@@ -50,7 +50,9 @@ namespace visage {
       if (canvas_)
         region->setCanvas(canvas_);
 
-      region->setLayerIndex(layer_index_);
+      // One that draws into a layer of its own, as one taken out and put back does, is a layer
+      // below this one, as setLayerIndex() puts it.
+      region->setLayerIndex(region->needsLayer() ? layer_index_ + 1 : layer_index_);
     }
 
     void removeRegion(Region* region);

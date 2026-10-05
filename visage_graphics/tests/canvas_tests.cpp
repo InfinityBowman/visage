@@ -745,3 +745,27 @@ TEST_CASE("Canvas draws one colour as that colour through the atlas would, and p
     REQUIRE(near(a.hexAlpha(), b.hexAlpha()));
   }
 }
+
+TEST_CASE("A region with a layer of its own is put back a layer below its parent", "[graphics]") {
+  Canvas canvas;
+  canvas.setWindowless(100, 100);
+  Region parent;
+  Region child;
+  parent.setBounds(0, 0, 100, 100);
+  child.setBounds(10, 10, 50, 50);
+  canvas.addRegion(&parent);
+  parent.addRegion(&child);
+  child.setNeedsLayer(true);
+  Layer* const own = child.layer();
+  REQUIRE(own != parent.layer());
+
+  // As a frame taken out of a window and put back is: its layer is the one it had, not its
+  // parent's, which a post effect of its own would otherwise be laid on.
+  parent.removeRegion(&child);
+  parent.addRegion(&child);
+  REQUIRE(child.needsLayer());
+  REQUIRE(child.layer() == own);
+  REQUIRE(child.layer() != parent.layer());
+
+  parent.removeRegion(&child);
+}
