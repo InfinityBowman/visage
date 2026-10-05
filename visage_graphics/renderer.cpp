@@ -170,6 +170,14 @@ namespace visage {
     swap_chain_supported_ = bgfx::getCaps()->supported & BGFX_CAPS_SWAP_CHAIN;
   }
 
+  Renderer::Usage Renderer::usage() const {
+    if (!initialized_)
+      return {};
+    const bgfx::Stats* stats = bgfx::getStats();
+    return { stats->textureMemoryUsed, stats->rtMemoryUsed, stats->numTextures,
+             stats->numFrameBuffers,   static_cast<int>(stats->numDraw), stats->numViews };
+  }
+
   void Renderer::shutdown() {
     if (!initialized_)
       return;

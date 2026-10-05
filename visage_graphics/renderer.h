@@ -25,6 +25,8 @@
 #include "visage_utils/thread_utils.h"
 #include "windowless_context.h"
 
+#include <cstdint>
+
 namespace visage {
   class GraphicsCallbackHandler;
 
@@ -62,6 +64,18 @@ namespace visage {
     void initialize(void* model_window, void* display);
     void setScreenshotData(const uint8_t* data, int width, int height, int pitch, bool blue_red);
     const Screenshot& screenshot() const { return screenshot_; }
+
+    // What the GPU holds for this process and drew in the last frame, as the renderer
+    // estimates it: zero before the renderer is initialized.
+    struct Usage {
+      int64_t texture_bytes = 0;
+      int64_t render_target_bytes = 0;
+      int textures = 0;
+      int frame_buffers = 0;
+      int draws = 0;
+      int views = 0;
+    };
+    Usage usage() const;
 
     const std::string& errorMessage() const { return error_message_; }
     bool supported() const { return supported_; }
