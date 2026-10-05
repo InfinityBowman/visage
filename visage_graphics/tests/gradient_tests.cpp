@@ -195,6 +195,69 @@ TEST_CASE("Gradient comparison", "[graphics]") {
   }
 }
 
+TEST_CASE("Gradient hash agrees with comparison", "[graphics]") {
+  Color red(1.0f, 1.0f, 0.0f, 0.0f);
+  Color blue(1.0f, 0.0f, 0.0f, 1.0f);
+
+  REQUIRE(Gradient(red, blue) == Gradient(red, blue));
+  REQUIRE(Gradient(red, blue).hash() == Gradient(red, blue).hash());
+  REQUIRE(Gradient(red, blue) != Gradient(blue, red));
+
+  Color zero(1.0f, 0.0f, 0.0f, 0.0f);
+  Color negative_zero(1.0f, -0.0f, 0.0f, 0.0f);
+  REQUIRE(Gradient(zero, blue) == Gradient(negative_zero, blue));
+  REQUIRE(Gradient(zero, blue).hash() == Gradient(negative_zero, blue).hash());
+
+  Gradient repeating(red, blue);
+  repeating.setRepeat(true);
+  REQUIRE(repeating != Gradient(red, blue));
+}
+
+TEST_CASE("GradientAtlas packs each gradient once", "[graphics]") {
+  Color red(1.0f, 1.0f, 0.0f, 0.0f);
+  Color green(1.0f, 0.0f, 1.0f, 0.0f);
+  Color blue(1.0f, 0.0f, 0.0f, 1.0f);
+
+  GradientAtlas atlas;
+  auto first = atlas.addGradient(Gradient(red, blue));
+  auto second = atlas.addGradient(Gradient(red, blue));
+  REQUIRE(atlas.numGradients() == 1);
+  REQUIRE(first.x() == second.x());
+  REQUIRE(first.y() == second.y());
+
+  auto other = atlas.addGradient(Gradient(red, green));
+  REQUIRE(atlas.numGradients() == 2);
+  REQUIRE((other.x() != first.x() || other.y() != first.y()));
+}
+
+TEST_CASE("GradientAtlas removes only what nothing holds", "[graphics]") {
+  Color red(1.0f, 1.0f, 0.0f, 0.0f);
+  Color green(1.0f, 0.0f, 1.0f, 0.0f);
+  Color blue(1.0f, 0.0f, 0.0f, 1.0f);
+  Gradient kept(red, blue);
+  Gradient dropped(red, green);
+  Gradient revived(green, blue);
+
+  GradientAtlas atlas;
+  auto held = atlas.addGradient(kept);
+  atlas.addGradient(dropped);
+  // Released and added again, twice over, before the clear: as a gradient drawn every frame is.
+  atlas.addGradient(revived);
+  atlas.addGradient(revived);
+  auto revived_held = atlas.addGradient(revived);
+  REQUIRE(atlas.numGradients() == 3);
+
+  atlas.clearStaleGradients();
+  REQUIRE(atlas.numGradients() == 2);
+  REQUIRE(held.gradient() == kept);
+  REQUIRE(revived_held.gradient() == revived);
+
+  atlas.addGradient(dropped);
+  REQUIRE(atlas.numGradients() == 3);
+  atlas.clearStaleGradients();
+  REQUIRE(atlas.numGradients() == 2);
+}
+
 TEST_CASE("Gradient interpolation", "[graphics]") {
   SECTION("Interpolate between gradients") {
     Color red(1.0f, 1.0f, 0.0f, 0.0f);

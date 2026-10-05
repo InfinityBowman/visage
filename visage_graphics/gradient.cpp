@@ -22,6 +22,7 @@
 #include "gradient.h"
 
 #include <bgfx/bgfx.h>
+#include <cstring>
 
 namespace visage {
 
@@ -99,6 +100,36 @@ namespace visage {
         bgfx::destroy(handle);
     }
   };
+
+  size_t Gradient::hash() const {
+    // FNV-1a over what compare() reads, with -0 taken as 0 as compare() takes it.
+    size_t result = 14695981039346656037ull;
+    auto mix = [&result](uint32_t bits) {
+      for (int i = 0; i < 4; ++i) {
+        result ^= (bits >> (8 * i)) & 0xff;
+        result *= 1099511628211ull;
+      }
+    };
+    auto mix_float = [&mix](float value) {
+      uint32_t bits = 0;
+      if (value != 0.0f)
+        std::memcpy(&bits, &value, sizeof(bits));
+      mix(bits);
+    };
+
+    mix(colors_.size());
+    mix((repeat_ ? 1 : 0) | (reflect_ ? 2 : 0));
+    for (int i = 0; i < colors_.size(); ++i) {
+      const Color& color = colors_[i];
+      mix_float(color.alpha());
+      mix_float(color.red());
+      mix_float(color.green());
+      mix_float(color.blue());
+      mix_float(color.hdr());
+      mix_float(positions_[i]);
+    }
+    return result;
+  }
 
   GradientAtlas::PackedGradientReference::~PackedGradientReference() {
     if (auto atlas_pointer = atlas.lock())
