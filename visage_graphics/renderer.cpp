@@ -58,11 +58,12 @@ namespace visage {
     void captureFrame(const void*, uint32_t) override { }
   };
 
-  static constexpr uint32_t resetFlags() {
+  static uint32_t resetFlags() {
 #if VISAGE_WINDOWS
     return BGFX_RESET_FLIP_AFTER_RENDER;
 #elif VISAGE_MAC
-    return BGFX_RESET_FLIP_AFTER_RENDER | BGFX_RESET_VSYNC;
+    return Renderer::waitsForVsync() ? BGFX_RESET_FLIP_AFTER_RENDER | BGFX_RESET_VSYNC
+                                     : BGFX_RESET_FLIP_AFTER_RENDER;
 #elif VISAGE_LINUX
     return BGFX_RESET_VSYNC;
 #else

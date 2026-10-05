@@ -37,6 +37,12 @@ namespace visage {
 
     static void resetResolution(int width, int height);
 
+    // Whether a present waits for the display's refresh, which it does by default. A caller
+    // whose own clock is the display's already (an overlay drawn from a host's vertical
+    // blank) turns it off before the first window: the wait would only hold the caller.
+    static void setWaitsForVsync(bool waits) { waitsForVsyncFlag() = waits; }
+    static bool waitsForVsync() { return waitsForVsyncFlag(); }
+
     void initializeWindowless() { initialize(windowlessContext(), nullptr); }
     void initialize(void* model_window, void* display);
     void setScreenshotData(const uint8_t* data, int width, int height, int pitch, bool blue_red);
@@ -48,6 +54,11 @@ namespace visage {
     bool initialized() const { return initialized_; }
 
   private:
+    static bool& waitsForVsyncFlag() {
+      static bool waits = true;
+      return waits;
+    }
+
     void startRenderThread();
     void render();
     void run() override;
