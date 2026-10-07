@@ -133,6 +133,19 @@ namespace visage {
     handleWindowResize(width, height);
   }
 
+  // The page's viewport is the screen, in native pixels, a window centred in it by default.
+  IBounds computeWindowBounds(const Dimension& x, const Dimension& y, const Dimension& width,
+                              const Dimension& height) {
+    float scale = defaultDpiScale();
+    int display_width = scale * EM_ASM_INT({ return window.innerWidth; });
+    int display_height = scale * EM_ASM_INT({ return window.innerHeight; });
+    int result_w = width.computeInt(scale, display_width, display_height, 100);
+    int result_h = height.computeInt(scale, display_width, display_height, 100);
+    int result_x = x.computeInt(scale, display_width, display_height, (display_width - result_w) / 2);
+    int result_y = y.computeInt(scale, display_width, display_height, (display_height - result_h) / 2);
+    return { result_x, result_y, result_w, result_h };
+  }
+
   std::unique_ptr<Window> createWindow(const Dimension& x, const Dimension& y, const Dimension& width,
                                        const Dimension& height, Window::Decoration decoration) {
     float scale = defaultDpiScale();
@@ -157,7 +170,31 @@ namespace visage {
 
   std::unique_ptr<Window> createOverlayWindow(const Dimension& width, const Dimension& height,
                                               void* parent_handle) {
-    return createPluginWindow(width, height, parent_handle);
+    float scale = defaultDpiScale();
+    int display_width = scale * EM_ASM_INT({ return window.innerWidth; });
+    int display_height = scale * EM_ASM_INT({ return window.innerHeight; });
+    return std::make_unique<WindowEmscriptenOverlay>(width.compute(scale, display_width, display_height),
+                                                     height.compute(scale, display_width, display_height),
+                                                     scale, static_cast<const char*>(parent_handle));
+  }
+
+  WindowEmscriptenOverlay::WindowEmscriptenOverlay(int width, int height, float scale,
+                                                   std::string selector) :
+      Window(width, height), selector_(std::move(selector)) {
+    setOverlay(true);
+    setDpiScale(scale);
+    windowContentsResized(width, height);
+  }
+
+  void WindowEmscriptenOverlay::windowContentsResized(int width, int height) {
+    emscripten_set_element_css_size(selector_.c_str(), width / dpiScale(), height / dpiScale());
+    emscripten_set_canvas_element_size(selector_.c_str(), width, height);
+  }
+
+  IPoint WindowEmscriptenOverlay::maxWindowDimensions() const {
+    int display_width = EM_ASM_INT({ return screen.width; });
+    int display_height = EM_ASM_INT({ return screen.height; });
+    return { display_width, display_height };
   }
 
   void showMessageBox(std::string title, std::string message) {

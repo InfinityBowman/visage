@@ -61,6 +61,31 @@ namespace visage {
     int mouse_y_ = 0;
     long long start_microseconds_ = 0;
   };
+
+  // An overlay in a page: drawn into the canvas element its parent handle names, a CSS
+  // selector such as "#overlay", which the page lays over its own drawing and keeps from the
+  // pointer and the keyboard. It has no event loop and no clock of its own, and is sized in
+  // native pixels, its element in CSS pixels.
+  class WindowEmscriptenOverlay : public Window {
+  public:
+    WindowEmscriptenOverlay(int width, int height, float scale, std::string selector);
+
+    void* initWindow() const override { return (void*)selector_.c_str(); }
+    void* nativeHandle() const override { return (void*)selector_.c_str(); }
+
+    void runEventLoop() override { }
+    void windowContentsResized(int width, int height) override;
+    void show() override { }
+    void showMaximized() override { }
+    void hide() override { }
+    void close() override { }
+    bool isShowing() const override { return true; }
+    void setWindowTitle(const std::string& title) override { }
+    IPoint maxWindowDimensions() const override;
+
+  private:
+    std::string selector_;
+  };
 }
 
 #endif
