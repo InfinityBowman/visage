@@ -101,7 +101,9 @@ target_link_libraries(
   bgfx
   bx
   bimg_decode
-  bimg_encode
+  # The encoders' third-party code knows no WebAssembly CPU, and nothing here encodes but a
+  # PNG, which bimg itself writes.
+  $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:bimg_encode>
   freetype
   ${WIN_LIBS}
   ${METAL_LIBS}
